@@ -41,8 +41,10 @@ async def test_resolve_preferred_model(lb):
 
 @pytest.mark.asyncio
 async def test_resolve_no_instances_raises(lb):
+    import time
     for inst in lb._instances.values():
         inst.healthy = False
+        inst.circuit_open_until = time.time() + 3600
     with pytest.raises(RuntimeError, match="No available model instances"):
         await resolve_route(
             ChatRequest(messages=[Message(role="user", content="Hello")], model_tier="cheap")

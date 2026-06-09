@@ -9,7 +9,7 @@ async def resolve_route(request: ChatRequest) -> ModelInstance:
 
     # 0. Direct model specification (highest priority)
     if request.model:
-        all_status = lb.get_all()
+        all_status = await lb.get_all()
         if request.model in all_status:
             instance = lb._instances.get(request.model)
             if instance and instance.healthy:
@@ -32,7 +32,7 @@ async def resolve_route(request: ChatRequest) -> ModelInstance:
 
     # 1. Check user's preferred model
     if request.preferred_model:
-        all_status = lb.get_all()
+        all_status = await lb.get_all()
         if request.preferred_model in all_status:
             instance = lb._instances.get(request.preferred_model)
             if instance and instance.healthy:

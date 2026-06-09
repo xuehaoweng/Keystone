@@ -18,8 +18,8 @@ def mock_adapter():
 @pytest.fixture
 def mock_lb():
     lb = MagicMock()
-    lb.report_success = MagicMock()
-    lb.report_error = MagicMock()
+    lb.report_success = AsyncMock()
+    lb.report_error = AsyncMock()
     lb.release = MagicMock()
     return lb
 

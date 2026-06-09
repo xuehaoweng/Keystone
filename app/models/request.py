@@ -1,6 +1,11 @@
+import os
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+_MAX_MESSAGES = int(os.getenv("GATEWAY_MAX_MESSAGES", "100"))
+_MAX_CONTENT_LENGTH = int(os.getenv("GATEWAY_MAX_CONTENT_LENGTH", "100000"))
+_MAX_TOKENS_GATEWAY = int(os.getenv("GATEWAY_MAX_TOKENS", "32768"))
 
 
 class Message(BaseModel):
@@ -26,6 +31,19 @@ class ChatRequest(BaseModel):
     temperature: float = Field(default=0.7, ge=0, le=2)
     max_tokens: int = Field(default=4096, gt=0, le=128000)
     tools: list[ToolRef] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def check_limits(self):
+        if len(self.messages) > _MAX_MESSAGES:
+            raise ValueError(f"Too many messages: maximum {_MAX_MESSAGES}")
+        total_content = 0
+        for msg in self.messages:
+            total_content += len(msg.content)
+            if len(msg.content) > _MAX_CONTENT_LENGTH:
+                raise ValueError(f"Message content too long: maximum {_MAX_CONTENT_LENGTH} characters")
+        if self.max_tokens > _MAX_TOKENS_GATEWAY:
+            raise ValueError(f"max_tokens exceeds gateway limit: maximum {_MAX_TOKENS_GATEWAY}")
+        return self
 
 
 class IntentResult(BaseModel):

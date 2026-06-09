@@ -160,8 +160,14 @@ async def _dispatch_non_stream_with_retry(
         current = next_instance
 
     if last_provider_error:
-        raise HTTPException(status_code=502, detail=last_provider_error.__dict__)
-    raise HTTPException(status_code=502, detail=f"Model error: {last_error}")
+        raise HTTPException(status_code=502, detail={
+            "code": last_provider_error.code,
+            "message": last_provider_error.message,
+            "provider": last_provider_error.provider,
+            "model": last_provider_error.model,
+            "status_code": last_provider_error.status_code,
+        })
+    raise HTTPException(status_code=502, detail={"code": "model_error", "message": str(last_error)})
 
 
 async def _anthropic_stream_generator(
@@ -239,7 +245,7 @@ async def _anthropic_stream_generator(
                 # message_stop
                 yield f"event: message_stop\ndata: {json.dumps({'type': 'message_stop'})}\n\n"
 
-        lb.report_success(instance.name)
+        await lb.report_success(instance.name)
         lb.release(instance.name)
         latency = (time.time() - start) * 1000
         await metrics.record(
@@ -257,7 +263,7 @@ async def _anthropic_stream_generator(
             )
         )
     except Exception:
-        lb.report_error(instance.name)
+        await lb.report_error(instance.name)
         lb.release(instance.name)
         raise
 

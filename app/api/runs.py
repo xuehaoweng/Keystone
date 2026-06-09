@@ -89,8 +89,16 @@ async def _dispatch_non_stream_with_retry(
         current = next_instance
 
     if last_provider_error:
-        raise HTTPException(status_code=502, detail=last_provider_error.__dict__)
-    raise HTTPException(status_code=502, detail=f"Model error: {last_error}")
+        # Only expose safe fields to the client; details (which may contain
+        # upstream response bodies with PII) are kept server-side.
+        raise HTTPException(status_code=502, detail={
+            "code": last_provider_error.code,
+            "message": last_provider_error.message,
+            "provider": last_provider_error.provider,
+            "model": last_provider_error.model,
+            "status_code": last_provider_error.status_code,
+        })
+    raise HTTPException(status_code=502, detail={"code": "model_error", "message": str(last_error)})
 
 
 @router.post("", status_code=status.HTTP_200_OK)
@@ -296,11 +304,15 @@ async def create_run(request: Request, body: ChatRequest):
                 error_type=type(e).__name__,
                 error_detail=str(e),
             ))
-            tb = traceback.format_exc()
-            print("=== DISPATCH ERROR ===")
-            print(f"Model: {instance.name}, Provider: {instance.tier}")
-            print(f"Exception: {e}")
-            print(tb)
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(
+                "Dispatch error: model=%s provider=%s error=%s",
+                instance.name,
+                instance.provider,
+                e,
+                exc_info=True,
+            )
             if isinstance(e, HTTPException):
                 raise
             raise HTTPException(status_code=502, detail=f"Model error: {e}")

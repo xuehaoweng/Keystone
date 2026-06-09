@@ -1,6 +1,9 @@
+import logging
 from dataclasses import dataclass
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -13,17 +16,23 @@ class ProviderError:
     details: str | None = None
 
 
-def _http_error_details(exc: httpx.HTTPStatusError) -> str:
-    response_text = exc.response.text.strip()
-    if not response_text:
-        return str(exc)
-    return f"{exc}\nProvider response body: {response_text}"
+def _safe_message(exc: httpx.HTTPStatusError) -> str:
+    """Return a short, safe message without the full response body."""
+    return f"HTTP {exc.response.status_code} from {exc.request.url}"
 
 
 def normalize_provider_error(exc: Exception, provider: str, model: str) -> ProviderError:
     if isinstance(exc, httpx.HTTPStatusError):
         status_code = exc.response.status_code
-        details = _http_error_details(exc)
+        safe_msg = _safe_message(exc)
+        # Log the full response body server-side only
+        logger.warning(
+            "Provider error: %s %s status=%s body=%s",
+            provider,
+            model,
+            status_code,
+            exc.response.text[:500],
+        )
         if status_code == 401:
             return ProviderError(
                 code="provider_unauthorized",
@@ -31,7 +40,7 @@ def normalize_provider_error(exc: Exception, provider: str, model: str) -> Provi
                 provider=provider,
                 model=model,
                 status_code=status_code,
-                details=details,
+                details=safe_msg,
             )
         if status_code == 402:
             return ProviderError(
@@ -40,7 +49,7 @@ def normalize_provider_error(exc: Exception, provider: str, model: str) -> Provi
                 provider=provider,
                 model=model,
                 status_code=status_code,
-                details=details,
+                details=safe_msg,
             )
         if status_code == 403:
             return ProviderError(
@@ -49,7 +58,7 @@ def normalize_provider_error(exc: Exception, provider: str, model: str) -> Provi
                 provider=provider,
                 model=model,
                 status_code=status_code,
-                details=details,
+                details=safe_msg,
             )
         if status_code == 429:
             return ProviderError(
@@ -58,7 +67,7 @@ def normalize_provider_error(exc: Exception, provider: str, model: str) -> Provi
                 provider=provider,
                 model=model,
                 status_code=status_code,
-                details=details,
+                details=safe_msg,
             )
         if status_code == 400:
             return ProviderError(
@@ -67,7 +76,7 @@ def normalize_provider_error(exc: Exception, provider: str, model: str) -> Provi
                 provider=provider,
                 model=model,
                 status_code=status_code,
-                details=details,
+                details=safe_msg,
             )
         return ProviderError(
             code="provider_error",
@@ -75,7 +84,7 @@ def normalize_provider_error(exc: Exception, provider: str, model: str) -> Provi
             provider=provider,
             model=model,
             status_code=status_code,
-            details=details,
+            details=safe_msg,
         )
     if isinstance(exc, TimeoutError):
         return ProviderError(

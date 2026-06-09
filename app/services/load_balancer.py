@@ -3,6 +3,9 @@ import time
 from dataclasses import dataclass
 
 from app.config import get_models_config
+from app.db.redis import get_redis
+
+CIRCUIT_PREFIX = "gateway:circuit:"
 
 
 @dataclass
@@ -45,15 +48,80 @@ class LoadBalancer:
                     rate_limit=m.get("rate_limit", 1000),
                 )
 
-    def get_by_tier(self, tier: str) -> list[ModelInstance]:
+    async def _read_state(self, model_name: str) -> dict:
+        """Read circuit state from Redis; fall back to in-memory on failure."""
+        try:
+            redis = await get_redis()
+            key = f"{CIRCUIT_PREFIX}{model_name}"
+            data = await redis.hgetall(key)
+            if data:
+                return {
+                    "error_count": int(data.get("error_count", 0)),
+                    "last_error_time": float(data.get("last_error_time", 0)),
+                    "healthy": data.get("healthy", "1") == "1",
+                    "circuit_open_until": float(data.get("circuit_open_until", 0)),
+                    "circuit_state": data.get("circuit_state", "closed"),
+                }
+        except Exception:
+            pass
+        inst = self._instances.get(model_name)
+        if inst:
+            return {
+                "error_count": inst.error_count,
+                "last_error_time": inst.last_error_time,
+                "healthy": inst.healthy,
+                "circuit_open_until": inst.circuit_open_until,
+                "circuit_state": inst.circuit_state,
+            }
+        return {}
+
+    async def _write_state(self, model_name: str, **fields) -> None:
+        """Write circuit state to Redis; silently fail on connection errors."""
+        try:
+            redis = await get_redis()
+            key = f"{CIRCUIT_PREFIX}{model_name}"
+            await redis.hset(key, mapping={k: str(v) for k, v in fields.items()})
+        except Exception:
+            pass
+        # Always keep in-memory cache warm
+        inst = self._instances.get(model_name)
+        if inst:
+            for k, v in fields.items():
+                if hasattr(inst, k):
+                    if k == "healthy":
+                        v = v == "1" or v is True
+                    setattr(inst, k, v)
+
+    async def get_by_tier(self, tier: str) -> list[ModelInstance]:
         now = time.time()
+        candidates = []
         for inst in self._instances.values():
-            if not inst.healthy and inst.circuit_open_until and inst.circuit_open_until <= now:
-                inst.healthy = True
-                inst.error_count = 0
-                inst.circuit_open_until = 0
-                inst.circuit_state = "half-open"
-        return [i for i in self._instances.values() if i.tier == tier and i.healthy]
+            if inst.tier != tier:
+                continue
+            state = await self._read_state(inst.name)
+            # Auto-recover from open to half-open when timeout expires
+            if not state.get("healthy", True) and state.get("circuit_open_until", 0) <= now:
+                await self._write_state(
+                    inst.name,
+                    healthy="1",
+                    error_count=0,
+                    circuit_open_until=0,
+                    circuit_state="half-open",
+                )
+                state = {
+                    "healthy": True,
+                    "error_count": 0,
+                    "circuit_open_until": 0,
+                    "circuit_state": "half-open",
+                }
+            # Sync in-memory cache
+            inst.error_count = state.get("error_count", inst.error_count)
+            inst.healthy = state.get("healthy", inst.healthy)
+            inst.circuit_open_until = state.get("circuit_open_until", inst.circuit_open_until)
+            inst.circuit_state = state.get("circuit_state", inst.circuit_state)
+            if state.get("healthy", True):
+                candidates.append(inst)
+        return candidates
 
     async def select(
         self,
@@ -61,7 +129,7 @@ class LoadBalancer:
         exclude_names: set[str] | None = None,
     ) -> ModelInstance | None:
         async with self._lock:
-            candidates = self.get_by_tier(tier)
+            candidates = await self.get_by_tier(tier)
             if exclude_names:
                 candidates = [i for i in candidates if i.name not in exclude_names]
             if not candidates:
@@ -79,37 +147,45 @@ class LoadBalancer:
             inst = self._instances[model_name]
             inst.current_connections = max(0, inst.current_connections - 1)
 
-    def report_error(self, model_name: str):
-        if model_name in self._instances:
-            inst = self._instances[model_name]
-            inst.error_count += 1
-            inst.last_error_time = time.time()
-            if inst.error_count >= 5:
-                inst.healthy = False
-                inst.circuit_open_until = inst.last_error_time + 30
-                inst.circuit_state = "open"
-
-    def report_success(self, model_name: str):
-        if model_name in self._instances:
-            inst = self._instances[model_name]
-            inst.error_count = 0
-            inst.healthy = True
-            inst.circuit_open_until = 0
-            inst.circuit_state = "closed"
-
-    def get_all(self) -> dict:
-        return {
-            name: {
-                "provider": i.provider,
-                "tier": i.tier,
-                "healthy": i.healthy,
-                "connections": i.current_connections,
-                "errors": i.error_count,
-                "circuit_open_until": i.circuit_open_until,
-                "circuit_state": i.circuit_state,
-            }
-            for name, i in self._instances.items()
+    async def report_error(self, model_name: str):
+        state = await self._read_state(model_name)
+        error_count = state.get("error_count", 0) + 1
+        last_error_time = time.time()
+        fields = {
+            "error_count": error_count,
+            "last_error_time": last_error_time,
         }
+        if error_count >= 5:
+            fields.update({
+                "healthy": "0",
+                "circuit_open_until": last_error_time + 30,
+                "circuit_state": "open",
+            })
+        await self._write_state(model_name, **fields)
+
+    async def report_success(self, model_name: str):
+        await self._write_state(
+            model_name,
+            error_count=0,
+            healthy="1",
+            circuit_open_until=0,
+            circuit_state="closed",
+        )
+
+    async def get_all(self) -> dict:
+        result = {}
+        for name, inst in self._instances.items():
+            state = await self._read_state(name)
+            result[name] = {
+                "provider": inst.provider,
+                "tier": inst.tier,
+                "healthy": state.get("healthy", inst.healthy),
+                "connections": inst.current_connections,
+                "errors": state.get("error_count", inst.error_count),
+                "circuit_open_until": state.get("circuit_open_until", inst.circuit_open_until),
+                "circuit_state": state.get("circuit_state", inst.circuit_state),
+            }
+        return result
 
 
 _lb: LoadBalancer | None = None

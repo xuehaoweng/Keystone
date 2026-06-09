@@ -46,43 +46,48 @@ async def test_release_decreases_connections(lb):
     assert lb._instances[selected.name].current_connections == 0
 
 
-def test_report_error_marks_unhealthy(lb):
+@pytest.mark.asyncio
+async def test_report_error_marks_unhealthy(lb):
     for _ in range(5):
-        lb.report_error("m1")
+        await lb.report_error("m1")
     assert lb._instances["m1"].healthy is False
 
 
-def test_report_success_resets(lb):
+@pytest.mark.asyncio
+async def test_report_success_resets(lb):
     for _ in range(5):
-        lb.report_error("m1")
-    lb.report_success("m1")
+        await lb.report_error("m1")
+    await lb.report_success("m1")
     assert lb._instances["m1"].healthy is True
     assert lb._instances["m1"].error_count == 0
 
 
-def test_report_error_opens_circuit(lb, monkeypatch):
+@pytest.mark.asyncio
+async def test_report_error_opens_circuit(lb, monkeypatch):
     monkeypatch.setattr("app.services.load_balancer.time.time", lambda: 100.0)
     for _ in range(5):
-        lb.report_error("m1")
+        await lb.report_error("m1")
 
     assert lb._instances["m1"].healthy is False
     assert lb._instances["m1"].circuit_open_until == 130.0
 
 
-def test_get_by_tier_recovers_after_circuit_cooldown(lb, monkeypatch):
+@pytest.mark.asyncio
+async def test_get_by_tier_recovers_after_circuit_cooldown(lb, monkeypatch):
     monkeypatch.setattr("app.services.load_balancer.time.time", lambda: 100.0)
     for _ in range(5):
-        lb.report_error("m1")
+        await lb.report_error("m1")
 
     monkeypatch.setattr("app.services.load_balancer.time.time", lambda: 131.0)
-    candidates = lb.get_by_tier("cheap")
+    candidates = await lb.get_by_tier("cheap")
 
     assert lb._instances["m1"] in candidates
     assert lb._instances["m1"].healthy is True
     assert lb._instances["m1"].error_count == 0
 
 
-def test_get_all(lb):
-    result = lb.get_all()
+@pytest.mark.asyncio
+async def test_get_all(lb):
+    result = await lb.get_all()
     assert "m1" in result
     assert result["m1"]["tier"] == "cheap"

@@ -1,3 +1,5 @@
+import json
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 import uuid
@@ -10,6 +12,36 @@ from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        log_record = {
+            "timestamp": self.formatTime(record),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if hasattr(record, "request_id"):
+            log_record["request_id"] = record.request_id
+        if record.exc_info:
+            log_record["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_record, ensure_ascii=False)
+
+
+class RequestIdFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        from app.utils.context import get_request_id
+        record.request_id = get_request_id()
+        return True
+
+
+# Configure root logger to output structured JSON
+_handler = logging.StreamHandler()
+_handler.setFormatter(JSONFormatter())
+_handler.addFilter(RequestIdFilter())
+logging.getLogger().addHandler(_handler)
+logging.getLogger().setLevel(logging.INFO)
+
 from app.api.admin import router as admin_router  # noqa: E402
 from app.api.anthropic_compatible import router as anthropic_router  # noqa: E402
 from app.api.auth import router as auth_router  # noqa: E402
@@ -21,18 +53,29 @@ from app.db.sqlite import close_db  # noqa: E402
 from app.db.sqlite import get_db  # noqa: E402
 from app.db.sqlite import init_db  # noqa: E402
 from app.services.health_probe import start_health_probe, stop_health_probe  # noqa: E402
+from app.services.prometheus_metrics import generate_metrics  # noqa: E402
+from app.services.retention import start_retention_cleanup, stop_retention_cleanup  # noqa: E402
 from app.services.metrics import get_metrics  # noqa: E402
 from app.utils.context import request_id_var  # noqa: E402
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import os
+    if not os.getenv("GATEWAY_KEY_ENCRYPTION_SECRET"):
+        raise RuntimeError(
+            "GATEWAY_KEY_ENCRYPTION_SECRET is not set. "
+            "This environment variable is required for API key encryption. "
+            "Please add it to your .env file before starting the gateway."
+        )
     await init_db()
     get_metrics().start_flush_loop()
     start_health_probe()
+    start_retention_cleanup()
     yield
     await get_metrics().force_flush()
     await stop_health_probe()
+    await stop_retention_cleanup()
     await close_redis()
     await close_db()
 
@@ -69,6 +112,12 @@ if (_frontend_dist / "assets").exists():
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/metrics", include_in_schema=False)
+async def metrics():
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse(generate_metrics(), media_type="text/plain; version=0.0.4; charset=utf-8")
 
 
 @app.get("/ready")

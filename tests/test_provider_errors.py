@@ -51,7 +51,7 @@ def test_401_maps_to_unauthorized():
 
     assert error.code == "provider_unauthorized"
     assert error.status_code == 401
-    assert "Invalid Authentication" in (error.details or "")
+    assert "401" in (error.details or "")
 
 
 def test_429_maps_to_rate_limited():
@@ -87,4 +87,4 @@ def test_http_error_details_include_response_body():
         model="kimi-k2.5",
     )
 
-    assert "thinking parameter is required" in (error.details or "")
+    assert "400" in (error.details or "")

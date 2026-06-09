@@ -7,6 +7,7 @@ import uuid
 from app.adapters.base import ChatResult, ModelAdapter
 from app.models.request import ChatRequest, Message
 from app.services.metrics import MetricsCollector, RequestMetric
+from app.services.prometheus_metrics import record_request, set_circuit_state
 from app.utils.context import get_request_id
 
 
@@ -34,7 +35,7 @@ async def dispatch_non_stream(
             temperature=request.temperature,
             max_tokens=request.max_tokens,
         )
-        lb.report_success(model_name)
+        await lb.report_success(model_name)
         lb.release(model_name)
         latency = (time.time() - start) * 1000
         await metrics.record(RequestMetric(
@@ -51,7 +52,7 @@ async def dispatch_non_stream(
         ))
         return result
     except Exception as e:
-        lb.report_error(model_name)
+        await lb.report_error(model_name)
         lb.release(model_name)
         if req_id := get_request_id():
             e.args = (f"[req:{req_id}] {e}",) + e.args[1:]
@@ -89,7 +90,7 @@ async def dispatch_stream(
             if chunk.finish_reason:
                 total_prompt = chunk.prompt_tokens
                 yield f'event: done\ndata: {{"id": "{run_id}", "model": "{model_name}", "finish_reason": {json.dumps(chunk.finish_reason)}}}\n\n'
-        lb.report_success(model_name)
+        await lb.report_success(model_name)
         lb.release(model_name)
         latency = (time.time() - start) * 1000
         await metrics.record(RequestMetric(
@@ -108,7 +109,7 @@ async def dispatch_stream(
         lb.release(model_name)
         raise
     except Exception as e:
-        lb.report_error(model_name)
+        await lb.report_error(model_name)
         lb.release(model_name)
         if req_id := get_request_id():
             e.args = (f"[req:{req_id}] {e}",) + e.args[1:]

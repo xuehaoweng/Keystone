@@ -24,14 +24,14 @@ router = APIRouter(prefix="/api", tags=["admin"])
 async def list_models(request: Request):
     await authenticate(request)
     lb = get_load_balancer()
-    return lb.get_all()
+    return await lb.get_all()
 
 
 @router.get("/models/{model_name}/health")
 async def model_health(model_name: str, request: Request):
     await authenticate(request)
     lb = get_load_balancer()
-    all_status = lb.get_all()
+    all_status = await lb.get_all()
     if model_name not in all_status:
         return {"name": model_name, "status": "unknown"}
     info = all_status[model_name]

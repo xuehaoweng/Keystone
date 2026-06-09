@@ -17,7 +17,13 @@ def _key_encryption_secret() -> str:
         return secret
     cfg = get_gateway_config()
     auth_cfg = cfg.get("auth", {})
-    return auth_cfg.get("jwt_secret") or os.getenv("GATEWAY_JWT_SECRET", "") or "llm-gateway-dev-secret"
+    fallback = auth_cfg.get("jwt_secret") or os.getenv("GATEWAY_JWT_SECRET", "")
+    if fallback:
+        return fallback
+    raise RuntimeError(
+        "GATEWAY_KEY_ENCRYPTION_SECRET is not set. "
+        "Please configure it in your .env file or environment variables."
+    )
 
 
 def _fernet() -> Fernet:

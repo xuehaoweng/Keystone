@@ -61,9 +61,9 @@ async def health_probe_loop():
                 continue
             ok = await _probe_model(inst.name)
             if ok:
-                lb.report_success(inst.name)
+                await lb.report_success(inst.name)
             else:
-                lb.report_error(inst.name)
+                await lb.report_error(inst.name)
 
 
 _probe_task: asyncio.Task | None = None
