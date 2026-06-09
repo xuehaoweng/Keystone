@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LLM Gateway Admin</title>
+    <link rel="stylesheet" href="/admin/assets/admin.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>LLM Gateway Admin</h1>
+        <p>统一入口、模型治理、成本观测和调用验证</p>
+      </div>
+      <label class="token-box">
+        <span>Bearer Token</span>
+        <input id="token" type="password" autocomplete="off" placeholder="lgw_... 或 JWT" />
+      </label>
+    </header>
+
+    <main class="layout">
+      <nav class="tabs" aria-label="Admin sections">
+        <button class="tab active" data-panel="overview">Overview</button>
+        <button class="tab" data-panel="keys">API Keys</button>
+        <button class="tab" data-panel="models">Models</button>
+        <button class="tab" data-panel="console">Test Console</button>
+      </nav>
+
+      <section id="overview" class="panel active">
+        <div class="toolbar">
+          <h2>Overview</h2>
+          <button id="refresh-overview">刷新</button>
+        </div>
+        <div class="stats">
+          <div class="stat"><span>Requests</span><strong id="stat-requests">-</strong></div>
+          <div class="stat"><span>Tokens</span><strong id="stat-tokens">-</strong></div>
+          <div class="stat"><span>Cost</span><strong id="stat-cost">-</strong></div>
+          <div class="stat"><span>Avg Latency</span><strong id="stat-latency">-</strong></div>
+        </div>
+        <pre id="overview-output" class="output"></pre>
+      </section>
+
+      <section id="keys" class="panel">
+        <div class="toolbar">
+          <h2>API Keys</h2>
+          <button id="refresh-keys">刷新</button>
+        </div>
+        <form id="key-form" class="grid-form">
+          <label>名称<input name="name" value="default" /></label>
+          <label>月度 Quota<input name="quota" type="number" min="0" value="0" /></label>
+          <label>QPS<input name="rate_limit" type="number" min="1" value="10" /></label>
+          <label>Allowed Tiers<input name="allowed_tiers" value="cheap,expensive" /></label>
+          <button type="submit">创建 Key</button>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Quota</th>
+                <th>QPS</th>
+                <th>Tiers</th>
+                <th>Created</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="keys-body"></tbody>
+          </table>
+        </div>
+        <pre id="keys-output" class="output"></pre>
+      </section>
+
+      <section id="models" class="panel">
+        <div class="toolbar">
+          <h2>Models & Routing</h2>
+          <button id="refresh-models">刷新</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>Tier</th>
+                <th>Healthy</th>
+                <th>Connections</th>
+                <th>Errors</th>
+                <th>Circuit</th>
+              </tr>
+            </thead>
+            <tbody id="models-body"></tbody>
+          </table>
+        </div>
+        <pre id="config-output" class="output"></pre>
+      </section>
+
+      <section id="console" class="panel">
+        <div class="toolbar">
+          <h2>Test Console</h2>
+        </div>
+        <form id="run-form" class="console-form">
+          <label>Message<textarea name="message" rows="5">什么是 LLM Gateway？</textarea></label>
+          <div class="grid-form">
+            <label>Tier
+              <select name="model_tier">
+                <option value="auto">auto</option>
+                <option value="cheap">cheap</option>
+                <option value="expensive">expensive</option>
+              </select>
+            </label>
+            <label>Model<input name="model" placeholder="可选" /></label>
+            <label>Temperature<input name="temperature" type="number" min="0" max="2" step="0.1" value="0" /></label>
+            <label>Max Tokens<input name="max_tokens" type="number" min="1" value="512" /></label>
+          </div>
+          <button type="submit">发送测试请求</button>
+        </form>
+        <pre id="run-output" class="output"></pre>
+      </section>
+    </main>
+
+    <script src="/admin/assets/admin.js"></script>
+  </body>
+</html>

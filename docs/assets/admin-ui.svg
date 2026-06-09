@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-label="LLM Gateway 管理后台预览">
+  <rect width="1440" height="900" fill="#f4f6f8"/>
+  <rect x="0" y="0" width="1440" height="120" fill="#ffffff" stroke="#d0d5dd"/>
+  <text x="32" y="38" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="700" fill="#0f766e">开源 LLM Gateway</text>
+  <text x="32" y="72" font-family="Inter,Arial,sans-serif" font-size="30" font-weight="800" fill="#1d2939">LLM Gateway 管理后台</text>
+  <text x="32" y="100" font-family="Inter,Arial,sans-serif" font-size="15" fill="#667085">统一入口、模型治理、成本观测、路由解释和调用验证。</text>
+  <rect x="1010" y="28" width="398" height="66" rx="8" fill="#f8fafb" stroke="#d0d5dd"/>
+  <text x="1030" y="54" font-family="Inter,Arial,sans-serif" font-size="13" fill="#667085">Gateway API Key / JWT</text>
+  <rect x="1030" y="63" width="350" height="22" rx="4" fill="#ffffff" stroke="#d0d5dd"/>
+
+  <rect x="32" y="144" width="240" height="620" rx="8" fill="#ffffff" stroke="#d0d5dd"/>
+  <rect x="52" y="164" width="38" height="38" rx="8" fill="#111827"/>
+  <text x="61" y="188" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="800" fill="#ffffff">LG</text>
+  <text x="102" y="181" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="800" fill="#1d2939">LLM Gateway</text>
+  <text x="102" y="199" font-family="Inter,Arial,sans-serif" font-size="12" fill="#667085">v0.1.0 开源版</text>
+  <line x1="52" y1="218" x2="252" y2="218" stroke="#d0d5dd"/>
+  <text x="52" y="248" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="800" fill="#667085">观测</text>
+  <rect x="52" y="262" width="200" height="36" rx="8" fill="#0f766e"/>
+  <text x="82" y="285" font-family="Inter,Arial,sans-serif" font-size="14" fill="#ffffff">概览</text>
+  <text x="82" y="327" font-family="Inter,Arial,sans-serif" font-size="14" fill="#1d2939">模型池</text>
+  <text x="82" y="369" font-family="Inter,Arial,sans-serif" font-size="14" fill="#1d2939">用量账单</text>
+  <text x="52" y="412" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="800" fill="#667085">治理</text>
+  <text x="82" y="449" font-family="Inter,Arial,sans-serif" font-size="14" fill="#1d2939">访问密钥</text>
+  <text x="82" y="491" font-family="Inter,Arial,sans-serif" font-size="14" fill="#1d2939">路由规则</text>
+  <text x="52" y="534" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="800" fill="#667085">开发</text>
+  <text x="82" y="571" font-family="Inter,Arial,sans-serif" font-size="14" fill="#1d2939">测试控制台</text>
+  <text x="82" y="613" font-family="Inter,Arial,sans-serif" font-size="14" fill="#1d2939">供应商配置</text>
+
+  <rect x="292" y="144" width="1116" height="620" rx="8" fill="#ffffff" stroke="#d0d5dd"/>
+  <text x="316" y="184" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="800" fill="#1d2939">运行概览</text>
+  <text x="316" y="210" font-family="Inter,Arial,sans-serif" font-size="14" fill="#667085">网关运行状态、用量和依赖健康。</text>
+  <rect x="1286" y="164" width="90" height="36" rx="8" fill="#ffffff" stroke="#d0d5dd"/>
+  <text x="1318" y="187" font-family="Inter,Arial,sans-serif" font-size="14" fill="#1d2939">刷新</text>
+
+  <rect x="316" y="238" width="90" height="28" rx="14" fill="#ecfdf3"/>
+  <text x="332" y="257" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700" fill="#067647">网关: 正常</text>
+  <rect x="416" y="238" width="106" height="28" rx="14" fill="#ecfdf3"/>
+  <text x="432" y="257" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700" fill="#067647">数据库: 正常</text>
+  <rect x="532" y="238" width="104" height="28" rx="14" fill="#fffaeb"/>
+  <text x="548" y="257" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700" fill="#b54708">Redis: 降级</text>
+  <rect x="646" y="238" width="128" height="28" rx="14" fill="#fffaeb"/>
+  <text x="662" y="257" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700" fill="#b54708">访问凭证: 降级</text>
+
+  <g font-family="Inter,Arial,sans-serif">
+    <rect x="316" y="292" width="256" height="102" rx="8" fill="#ffffff" stroke="#d0d5dd"/>
+    <text x="336" y="326" font-size="14" fill="#667085">请求数</text>
+    <text x="336" y="366" font-size="30" font-weight="800" fill="#1d2939">0</text>
+    <rect x="588" y="292" width="256" height="102" rx="8" fill="#ffffff" stroke="#d0d5dd"/>
+    <text x="608" y="326" font-size="14" fill="#667085">Token 用量</text>
+    <text x="608" y="366" font-size="30" font-weight="800" fill="#1d2939">0</text>
+    <rect x="860" y="292" width="256" height="102" rx="8" fill="#ffffff" stroke="#d0d5dd"/>
+    <text x="880" y="326" font-size="14" fill="#667085">预估成本</text>
+    <text x="880" y="366" font-size="30" font-weight="800" fill="#1d2939">0.0000</text>
+    <rect x="1132" y="292" width="244" height="102" rx="8" fill="#ffffff" stroke="#d0d5dd"/>
+    <text x="1152" y="326" font-size="14" fill="#667085">平均延迟</text>
+    <text x="1152" y="366" font-size="30" font-weight="800" fill="#1d2939">0.0ms</text>
+  </g>
+
+  <rect x="316" y="426" width="340" height="118" rx="8" fill="#fffcf5" stroke="#fedf89"/>
+  <text x="336" y="460" font-family="Inter,Arial,sans-serif" font-size="14" fill="#667085">访问凭证</text>
+  <text x="336" y="492" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="800" fill="#1d2939">待填写</text>
+  <text x="336" y="520" font-family="Inter,Arial,sans-serif" font-size="13" fill="#667085">管理接口需要 Gateway API Key。</text>
+  <rect x="674" y="426" width="340" height="118" rx="8" fill="#f8fafb" stroke="#d0d5dd"/>
+  <text x="694" y="460" font-family="Inter,Arial,sans-serif" font-size="14" fill="#667085">控制面入口</text>
+  <text x="694" y="492" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="800" fill="#1d2939">/llm_gateway_admin</text>
+  <text x="694" y="520" font-family="Inter,Arial,sans-serif" font-size="13" fill="#667085">根路径自动跳转到管理后台。</text>
+  <rect x="1032" y="426" width="344" height="118" rx="8" fill="#f8fafb" stroke="#d0d5dd"/>
+  <text x="1052" y="460" font-family="Inter,Arial,sans-serif" font-size="14" fill="#667085">数据面入口</text>
+  <text x="1052" y="492" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="800" fill="#1d2939">/api/runs</text>
+  <text x="1052" y="520" font-family="Inter,Arial,sans-serif" font-size="13" fill="#667085">统一模型调用接口。</text>
+</svg>

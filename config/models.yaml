@@ -1,0 +1,63 @@
+models:
+  - name: "gpt-5.4"
+    tier: expensive
+    weight: 1
+    provider: lingya
+    max_concurrent: 40
+    rate_limit: 400
+  - name: "deepseek-chat"
+    tier: cheap
+    weight: 2
+    provider: deepseek
+    max_concurrent: 150
+    rate_limit: 1500
+  - name: "kimi-k2.5"
+    tier: cheap
+    weight: 2
+    provider: kimi
+    max_concurrent: 120
+    rate_limit: 1200
+  - name: "kimi-for-coding"
+    tier: cheap
+    weight: 2
+    provider: kimi_code
+    max_concurrent: 30
+    rate_limit: 300
+  - name: "qwen3.6-plus"
+    tier: expensive
+    weight: 1
+    provider: lingya
+    max_concurrent: 40
+    rate_limit: 400
+  - name: "glm-5.1"
+    tier: expensive
+    weight: 1
+    provider: glm
+    max_concurrent: 30
+    rate_limit: 300
+
+providers:
+  openai:
+    api_keys: []
+    base_url: "https://api.openai.com/v1"
+  anthropic:
+    api_keys: []
+    base_url: "https://api.anthropic.com"
+  qwen:
+    api_keys: []
+    base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  deepseek:
+    api_keys: []
+    base_url: "https://api.deepseek.com/v1"
+  kimi:
+    api_keys: []
+    base_url: "https://api.moonshot.ai/v1"
+  kimi_code:
+    api_keys: []
+    base_url: "https://api.kimi.com/coding/v1"
+  lingya:
+    api_keys: []
+    base_url: "https://api.lingyaai.cn/v1"
+  glm:
+    api_keys: []
+    base_url: "https://open.bigmodel.cn/api/paas/v4"

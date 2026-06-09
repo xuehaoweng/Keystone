@@ -1,0 +1,35 @@
+[project]
+name = "llm-gateway"
+version = "0.1.0"
+description = "Unified LLM routing proxy"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "httpx>=0.27.0",
+    "redis[hiredis]>=5.0.0",
+    "pyyaml>=6.0",
+    "python-jose[cryptography]>=3.3.0",
+    "python-multipart>=0.0.12",
+    "aiosqlite>=0.20.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-httpx>=0.33.0",
+    "fakeredis>=2.24.0",
+    "ruff>=0.7.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

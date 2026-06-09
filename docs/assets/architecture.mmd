@@ -1,0 +1,12 @@
+flowchart TB
+  app["业务应用 / Agent / 工作流"] --> ingress["接入层<br/>Nginx / Kong / APISIX / FastAPI<br/>Gateway API Key、QPS、IP 白名单、审计"]
+  ingress --> router["路由层<br/>场景规则、成本、延迟、健康状态<br/>静态规则 + 动态选择"]
+  router --> executor["执行层<br/>协议适配、重试、降级、缓存、熔断"]
+  executor --> openai["OpenAI"]
+  executor --> deepseek["DeepSeek"]
+  executor --> kimi["Kimi"]
+  executor --> qwen["Qwen"]
+  executor --> glm["GLM / 其他供应商"]
+  ingress --> admin["管理后台<br/>模型池、密钥、用量、供应商配置、测试控制台"]
+  router --> db["SQLite / PostgreSQL<br/>用量、成本、审计"]
+  executor --> redis["Redis<br/>缓存、限流状态"]

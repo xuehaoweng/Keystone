@@ -1,0 +1,66 @@
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 1
+
+auth:
+  jwt_secret: ""
+  jwt_algorithm: "HS256"
+  api_key_prefix: "lgw_"
+
+rate_limit:
+  default_rps: 10
+  burst_multiplier: 2
+
+timeouts:
+  intent_classification: 2
+  model_request: 60
+  stream_idle: 30
+
+intent_classifier:
+  model: "claude-haiku"
+  cache_ttl: 300
+  prompt: |
+    你是一个请求分类器。请将用户请求分类为以下等级：
+    - cheap: 简单查询、数据检索、MCP调用、Skill调用、常识问答
+    - expensive: 深度分析、告警诊断、知识库综合解答、代码协作、复杂推理
+
+    输出 JSON: {"tier": "cheap|expensive", "task_type": "...", "fallback_model": "..."}
+
+rules:
+  - name: "db_query"
+    match:
+      tools: ["execute_sql", "query_database"]
+    tier: cheap
+  - name: "mcp_call"
+    match:
+      tools: ["mcp_*"]
+    tier: cheap
+  - name: "skill_invoke"
+    match:
+      tools: ["skill_*"]
+    tier: cheap
+  - name: "network_traffic_query"
+    match:
+      keywords: ["流量", "带宽", "网络", "机房", "网段"]
+      max_content_tokens: 200
+    tier: cheap
+  - name: "knowledge_search"
+    match:
+      keywords: ["查询", "搜索", "查找"]
+      max_content_tokens: 500
+    tier: cheap
+  - name: "alert_analysis"
+    match:
+      keywords: ["告警", "报警", "incident"]
+      min_content_tokens: 1000
+    tier: expensive
+  - name: "code_collaboration"
+    match:
+      keywords: ["代码审查", "code review", "重构"]
+      min_content_tokens: 2000
+    tier: expensive
+  - name: "general_query"
+    match:
+      max_content_tokens: 200
+    tier: cheap
