@@ -70,7 +70,7 @@ Then open: `http://localhost:8000/login` and enter demo key `lgw_test_key_2026`.
 
 ## Why not LiteLLM?
 
-| | **This Gateway** | **LiteLLM** |
+| | **Keystone** | **LiteLLM** |
 |---|---|---|
 | **Intent Routing** | AI classifies prompt complexity and routes to cheap/expensive tier | Weighted round-robin only |
 | **Static Rules** | Tool/keyword/length-based rules for deterministic routing | No built-in rule engine |
@@ -80,7 +80,7 @@ Then open: `http://localhost:8000/login` and enter demo key `lgw_test_key_2026`.
 | **Chinese Providers** | First-class support for DeepSeek, Kimi, Qwen, GLM, Lingya | Via community adapters |
 
 Use **LiteLLM** when you need 100+ providers, team management, and a huge community.  
-Use **this gateway** when you want intelligent cost-aware routing, tier-based governance, and lightweight deployment with strong Chinese provider support.
+Use **Keystone** when you want intelligent cost-aware routing, tier-based governance, and lightweight deployment with strong Chinese provider support.
 
 ## Usage
 

@@ -34,8 +34,8 @@
 ## 快速开始
 
 ```bash
-git clone <repo>
-cd llm_gateway
+git clone git@github.com:xuehaoweng/Keystone.git
+cd Keystone
 cp .env.example .env
 # 编辑 .env，填入供应商 API Key
 docker compose up -d --build --force-recreate
