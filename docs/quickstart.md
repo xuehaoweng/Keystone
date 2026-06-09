@@ -1,6 +1,16 @@
 # Quickstart
 
-## Docker Compose
+## One-Command Start (推荐)
+
+```bash
+./scripts/quickstart.sh
+```
+
+该脚本会检查环境、构建镜像、启动服务、创建演示 Key，并打印访问链接。全程无需手动编辑 `.env`。
+
+> 如果 `bash` 不可用，请继续往下看「手动部署」步骤。
+
+## 手动部署
 
 ```bash
 cp .env.example .env

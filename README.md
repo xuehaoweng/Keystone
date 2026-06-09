@@ -34,23 +34,22 @@
 ## Quick Start
 
 ```bash
-git clone <repo>
-cd llm_gateway
+git clone git@github.com:xuehaoweng/Keystone.git
+cd Keystone
+./scripts/quickstart.sh
+```
+
+The script checks prerequisites, builds images, starts services, creates a demo key, and prints your access links. **You will be ready in under 5 minutes.**
+
+**Manual path** (if you prefer):
+```bash
 cp .env.example .env
 # Edit .env with your provider API keys
 docker compose up -d --build --force-recreate
-```
-
-Open the admin console:
-```text
-http://localhost:8000/login
-```
-
-Create a demo key:
-```bash
 docker compose exec gateway python scripts/setup_test_key.py
-# Use lgw_test_key_2026 in the admin UI
 ```
+
+Then open: `http://localhost:8000/login` and enter demo key `lgw_test_key_2026`.
 
 ## Features
 
