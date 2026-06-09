@@ -686,7 +686,7 @@ export function App() {
               <PanelHead title="调用追踪" desc="按 request_id 串联接入层、路由层和执行层，查看 fallback、缓存和错误。" action={() => runAction(refreshTraces)} />
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>时间</th><th>Request ID</th><th>状态</th><th>Provider</th><th>模型</th><th>路由</th><th>Token</th><th>延迟</th><th>路径</th></tr></thead>
+                  <thead><tr><th>时间</th><th>Request ID</th><th>状态</th><th>Provider</th><th>模型</th><th>路由</th><th>Fallback</th><th>Cache</th><th>Token</th><th>延迟</th><th>路径</th></tr></thead>
                   <tbody>
                     {(traces?.items || []).map((trace) => (
                       <tr key={trace.id}>
@@ -695,18 +695,16 @@ export function App() {
                         <td><span className={`pill ${trace.status === "success" ? "healthy" : "down"}`}>{trace.status === "success" ? "成功" : "失败"}</span></td>
                         <td>{trace.provider || "-"}</td>
                         <td><code>{trace.model_name || "-"}</code></td>
-                        <td>
-                          {trace.route_source || "-"}
-                          {trace.fallback_used && <span className="pill warn" style={{ marginLeft: 4 }}>fallback</span>}
-                          {trace.cache_hit && <span className="pill healthy" style={{ marginLeft: 4 }}>cache</span>}
-                        </td>
+                        <td>{trace.route_source || "-"}</td>
+                        <td>{trace.fallback_used ? <span className="pill warn">是</span> : <span className="pill neutral">-</span>}</td>
+                        <td>{trace.cache_hit ? <span className="pill healthy">命中</span> : <span className="pill neutral">-</span>}</td>
                         <td>{trace.total_tokens}</td>
                         <td>{Number(trace.latency_ms || 0).toFixed(1)}ms</td>
                         <td>{trace.attempted_models.join(" -> ") || "-"}</td>
                       </tr>
                     ))}
                     {(traces?.items || []).length === 0 && (
-                      <tr><td colSpan={9} className="empty-cell">暂无调用 Trace。通过测试控制台或业务 API 发起请求后，这里会展示完整路由路径。</td></tr>
+                      <tr><td colSpan={11} className="empty-cell">暂无调用 Trace。通过测试控制台或业务 API 发起请求后，这里会展示完整路由路径。</td></tr>
                     )}
                   </tbody>
                 </table>
