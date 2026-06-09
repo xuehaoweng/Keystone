@@ -30,6 +30,7 @@ export type ModelInfo = {
   connections: number;
   errors: number;
   circuit_open_until?: number;
+  circuit_state?: string;
 };
 
 export type RunResponse = {

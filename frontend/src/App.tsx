@@ -553,13 +553,14 @@ export function App() {
               <PanelHead title="模型与路由" desc="模型池、tier、连接数、错误数和熔断状态。" action={() => runAction(refreshModels)} />
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>模型</th><th>分层</th><th>健康状态</th><th>连接数</th><th>错误数</th><th>熔断到期</th></tr></thead>
+                  <thead><tr><th>模型</th><th>分层</th><th>健康状态</th><th>熔断状态</th><th>连接数</th><th>错误数</th><th>熔断到期</th></tr></thead>
                   <tbody>
                     {Object.entries(models).map(([name, info]) => (
                       <tr key={name}>
                         <td><code>{name}</code></td>
                         <td><span className={`pill ${info.tier}`}>{info.tier}</span></td>
                         <td><span className={`pill ${info.healthy ? "healthy" : "down"}`}>{info.healthy ? "健康" : "异常"}</span></td>
+                        <td>{circuitStateBadge(info.circuit_state)}</td>
                         <td>{info.connections}</td>
                         <td>{info.errors}</td>
                         <td>{info.circuit_open_until || 0}</td>
@@ -567,7 +568,7 @@ export function App() {
                     ))}
                     {Object.keys(models).length === 0 && (
                       <tr>
-                        <td colSpan={6} className="empty-cell">
+                        <td colSpan={7} className="empty-cell">
                           {modelEmptyText(token, outputKind, output)}
                         </td>
                       </tr>
@@ -694,7 +695,11 @@ export function App() {
                         <td><span className={`pill ${trace.status === "success" ? "healthy" : "down"}`}>{trace.status === "success" ? "成功" : "失败"}</span></td>
                         <td>{trace.provider || "-"}</td>
                         <td><code>{trace.model_name || "-"}</code></td>
-                        <td>{trace.route_source || "-"}{trace.fallback_used ? " · fallback" : ""}{trace.cache_hit ? " · cache" : ""}</td>
+                        <td>
+                          {trace.route_source || "-"}
+                          {trace.fallback_used && <span className="pill warn" style={{ marginLeft: 4 }}>fallback</span>}
+                          {trace.cache_hit && <span className="pill healthy" style={{ marginLeft: 4 }}>cache</span>}
+                        </td>
                         <td>{trace.total_tokens}</td>
                         <td>{Number(trace.latency_ms || 0).toFixed(1)}ms</td>
                         <td>{trace.attempted_models.join(" -> ") || "-"}</td>
@@ -969,6 +974,16 @@ function PanelHead({ title, desc, action }: { title: string; desc: string; actio
 
 function StatusPill({ label, ok }: { label: string; ok?: boolean }) {
   return <span className={`health-pill ${ok ? "ok" : "warn"}`}>{label}: {ok ? "正常" : "降级"}</span>;
+}
+
+function circuitStateBadge(state?: string) {
+  if (state === "open") {
+    return <span className="pill down">● 断开</span>;
+  }
+  if (state === "half-open") {
+    return <span className="pill warn">● 半开</span>;
+  }
+  return <span className="pill healthy">● 闭合</span>;
 }
 
 function statusText(status?: string): string {
