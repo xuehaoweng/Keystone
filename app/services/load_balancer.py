@@ -18,6 +18,7 @@ class ModelInstance:
     last_error_time: float = 0
     healthy: bool = True
     circuit_open_until: float = 0
+    circuit_state: str = "closed"
 
 
 class LoadBalancer:
@@ -51,6 +52,7 @@ class LoadBalancer:
                 inst.healthy = True
                 inst.error_count = 0
                 inst.circuit_open_until = 0
+                inst.circuit_state = "half-open"
         return [i for i in self._instances.values() if i.tier == tier and i.healthy]
 
     async def select(
@@ -85,6 +87,7 @@ class LoadBalancer:
             if inst.error_count >= 5:
                 inst.healthy = False
                 inst.circuit_open_until = inst.last_error_time + 30
+                inst.circuit_state = "open"
 
     def report_success(self, model_name: str):
         if model_name in self._instances:
@@ -92,6 +95,7 @@ class LoadBalancer:
             inst.error_count = 0
             inst.healthy = True
             inst.circuit_open_until = 0
+            inst.circuit_state = "closed"
 
     def get_all(self) -> dict:
         return {
@@ -102,6 +106,7 @@ class LoadBalancer:
                 "connections": i.current_connections,
                 "errors": i.error_count,
                 "circuit_open_until": i.circuit_open_until,
+                "circuit_state": i.circuit_state,
             }
             for name, i in self._instances.items()
         }

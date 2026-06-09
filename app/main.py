@@ -17,15 +17,24 @@ from app.api.openai_compatible import router as openai_router  # noqa: E402
 from app.api.runs import router as runs_router  # noqa: E402
 from app.db.redis import get_redis  # noqa: E402
 from app.db.redis import close_redis  # noqa: E402
+from app.db.sqlite import close_db  # noqa: E402
 from app.db.sqlite import get_db  # noqa: E402
 from app.db.sqlite import init_db  # noqa: E402
+from app.services.health_probe import start_health_probe, stop_health_probe  # noqa: E402
+from app.services.metrics import get_metrics  # noqa: E402
+from app.utils.context import request_id_var  # noqa: E402
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    get_metrics().start_flush_loop()
+    start_health_probe()
     yield
+    await get_metrics().force_flush()
+    await stop_health_probe()
     await close_redis()
+    await close_db()
 
 
 app = FastAPI(title="LLM Gateway", version="0.1.0", lifespan=lifespan)
@@ -35,6 +44,7 @@ app = FastAPI(title="LLM Gateway", version="0.1.0", lifespan=lifespan)
 async def request_id_middleware(request: Request, call_next):
     request_id = request.headers.get("x-request-id") or f"req-{uuid.uuid4().hex[:16]}"
     request.state.request_id = request_id
+    request_id_var.set(request_id)
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response

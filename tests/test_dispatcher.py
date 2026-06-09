@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.adapters.base import ChatChunk, ChatResult
-from app.db.sqlite import get_db, init_db, set_db_path
+from app.db.sqlite import close_db, get_db, init_db, set_db_path
 from app.models.request import ChatRequest, Message
 from app.services.metrics import MetricsCollector
 
@@ -31,9 +31,11 @@ def mock_metrics():
 
 @pytest.fixture(autouse=True)
 async def isolated_sqlite(tmp_path):
+    await close_db()
     set_db_path(str(tmp_path / "gateway-test.db"))
     await init_db()
     yield
+    await close_db()
     set_db_path("gateway.db")
 
 
@@ -153,6 +155,8 @@ async def test_dispatch_non_stream_persists_usage_and_cost(
     assert usage["total_tokens"] == 1500
     assert usage["total_cost_estimate"] == pytest.approx(0.20)
 
+    await metrics.force_flush()
+
     async with get_db() as db:
         cursor = await db.execute(
             "SELECT api_key_id, user_id, model_name, total_tokens, cost_estimate FROM usage_logs"
@@ -179,6 +183,7 @@ async def test_usage_summary_reads_from_database(mock_adapter, mock_lb):
         model="gpt-4o-mini",
     )
 
+    metrics = MetricsCollector()
     await dispatch_non_stream(
         adapter=mock_adapter,
         request=ChatRequest(messages=[Message(role="user", content="Hi")]),
@@ -187,9 +192,11 @@ async def test_usage_summary_reads_from_database(mock_adapter, mock_lb):
         route_path="model:gpt-4o-mini",
         user_id="user-db",
         lb=mock_lb,
-        metrics=MetricsCollector(),
+        metrics=metrics,
         api_key_id="key-db",
     )
+
+    await metrics.force_flush()
 
     summary = await get_usage_summary(api_key_id="key-db")
 

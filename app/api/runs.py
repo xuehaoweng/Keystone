@@ -16,8 +16,7 @@ from app.services.metrics import get_metrics, get_monthly_usage
 from app.services.provider_errors import ProviderError, normalize_provider_error
 from app.services.result_cache import (
     build_cache_key,
-    get_cached_response,
-    set_cached_response,
+    get_or_compute,
     should_cache_request,
 )
 from app.services.router import resolve_route
@@ -152,8 +151,7 @@ async def create_run(request: Request, body: ChatRequest):
         try:
             cache_key = build_cache_key(body, instance.tier) if should_cache_request(body) else None
             if cache_key:
-                cached = await get_cached_response(cache_key)
-                if cached:
+                async def _on_cache_hit(cached: ChatResponse):
                     cached.route = RouteInfo(
                         source="cache",
                         requested_tier=body.model_tier,
@@ -180,7 +178,59 @@ async def create_run(request: Request, body: ChatRequest):
                         completion_tokens=cached.usage.completion_tokens,
                         total_tokens=cached.usage.total_tokens,
                     ))
-                    return cached
+
+                async def _compute() -> ChatResponse:
+                    inner_start = time.time()
+                    final_instance, result, attempted_models = await _dispatch_non_stream_with_retry(
+                        body=body,
+                        instance=instance,
+                        user_id=user_id,
+                        api_key_id=api_key_id,
+                        lb=lb,
+                        metrics=metrics,
+                    )
+                    response = ChatResponse(
+                        id=f"run-{final_instance.name}",
+                        model=final_instance.name,
+                        tier=final_instance.tier,
+                        content=result.content,
+                        usage=UsageInfo(
+                            prompt_tokens=result.prompt_tokens,
+                            completion_tokens=result.completion_tokens,
+                            total_tokens=result.total_tokens,
+                        ),
+                        finish_reason=result.finish_reason,
+                        route=RouteInfo(
+                            source="direct_model" if body.model else ("explicit_tier" if body.model_tier != "auto" else "auto"),
+                            requested_tier=body.model_tier,
+                            resolved_tier=final_instance.tier,
+                            attempted_models=attempted_models,
+                            fallback_used=len(attempted_models) > 1,
+                            cache_hit=False,
+                        ),
+                    )
+                    await record_request_trace(RequestTrace(
+                        request_id=request_id,
+                        user_id=user_id,
+                        api_key_id=api_key_id,
+                        provider=final_instance.provider,
+                        model_name=final_instance.name,
+                        tier=final_instance.tier,
+                        status="success",
+                        route_source=response.route.source if response.route else None,
+                        requested_tier=body.model_tier,
+                        resolved_tier=final_instance.tier,
+                        attempted_models=attempted_models,
+                        fallback_used=len(attempted_models) > 1,
+                        cache_hit=False,
+                        latency_ms=(time.time() - inner_start) * 1000,
+                        prompt_tokens=result.prompt_tokens,
+                        completion_tokens=result.completion_tokens,
+                        total_tokens=result.total_tokens,
+                    ))
+                    return response
+
+                return await get_or_compute(cache_key, _compute, _on_cache_hit)
 
             final_instance, result, attempted_models = await _dispatch_non_stream_with_retry(
                 body=body,
@@ -229,8 +279,6 @@ async def create_run(request: Request, body: ChatRequest):
                 completion_tokens=result.completion_tokens,
                 total_tokens=result.total_tokens,
             ))
-            if cache_key:
-                await set_cached_response(cache_key, response)
             return response
         except Exception as e:
             await record_request_trace(RequestTrace(

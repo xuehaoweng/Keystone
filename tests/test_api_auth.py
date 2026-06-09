@@ -41,11 +41,12 @@ def test_list_keys_empty(client_with_db):
 
 
 def test_list_keys_returns_copyable_key(client, tmp_path):
-    from app.db.sqlite import get_db, init_db, set_db_path
+    from app.db.sqlite import close_db, get_db, init_db, set_db_path
     import asyncio
     import hashlib
 
     db_path = tmp_path / "keys.db"
+    asyncio.run(close_db())
     set_db_path(str(db_path))
     asyncio.run(init_db())
     key = "lgw_copyable"

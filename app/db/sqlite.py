@@ -1,8 +1,12 @@
-import aiosqlite
-from contextlib import asynccontextmanager
+import asyncio
 import os
+from contextlib import asynccontextmanager
+
+import aiosqlite
 
 _db_path: str = os.getenv("GATEWAY_DB_PATH", "gateway.db")
+_db_conn: aiosqlite.Connection | None = None
+_write_lock = asyncio.Lock()
 
 
 def set_db_path(path: str):
@@ -10,18 +14,39 @@ def set_db_path(path: str):
     _db_path = path
 
 
+async def _ensure_connection() -> aiosqlite.Connection:
+    global _db_conn
+    if _db_conn is None:
+        _db_conn = await aiosqlite.connect(_db_path)
+        _db_conn.row_factory = aiosqlite.Row
+        # WAL mode allows readers to proceed while a writer is active
+        await _db_conn.execute("PRAGMA journal_mode=WAL")
+        # NORMAL sync is safe with WAL and much faster than FULL
+        await _db_conn.execute("PRAGMA synchronous=NORMAL")
+        # 64 MB page cache
+        await _db_conn.execute("PRAGMA cache_size=-64000")
+        # Auto-checkpoint every 1000 pages (roughly 4 MB) to keep WAL small
+        await _db_conn.execute("PRAGMA wal_autocheckpoint=1000")
+        await _db_conn.commit()
+    return _db_conn
+
+
 @asynccontextmanager
 async def get_db():
-    db = await aiosqlite.connect(_db_path)
-    db.row_factory = aiosqlite.Row
-    try:
-        yield db
-    finally:
-        await db.close()
+    db = await _ensure_connection()
+    yield db
+
+
+async def close_db():
+    global _db_conn
+    if _db_conn is not None:
+        await _db_conn.close()
+        _db_conn = None
 
 
 async def init_db():
-    async with aiosqlite.connect(_db_path) as db:
+    db = await _ensure_connection()
+    async with _write_lock:
         await db.execute("""
             CREATE TABLE IF NOT EXISTS api_keys (
                 id TEXT PRIMARY KEY,
@@ -102,16 +127,14 @@ async def init_db():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        try:
-            await db.execute("ALTER TABLE usage_logs ADD COLUMN cost_estimate REAL DEFAULT 0")
-        except aiosqlite.OperationalError:
-            pass
-        try:
-            await db.execute("ALTER TABLE api_keys ADD COLUMN key_encrypted TEXT")
-        except aiosqlite.OperationalError:
-            pass
-        try:
-            await db.execute("ALTER TABLE api_keys ADD COLUMN external_user_id TEXT")
-        except aiosqlite.OperationalError:
-            pass
+        # Migration: add columns that may not exist in older dbs
+        for col_def in [
+            ("ALTER TABLE usage_logs ADD COLUMN cost_estimate REAL DEFAULT 0",),
+            ("ALTER TABLE api_keys ADD COLUMN key_encrypted TEXT",),
+            ("ALTER TABLE api_keys ADD COLUMN external_user_id TEXT",),
+        ]:
+            try:
+                await db.execute(col_def[0])
+            except aiosqlite.OperationalError:
+                pass
         await db.commit()

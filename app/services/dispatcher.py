@@ -7,6 +7,7 @@ import uuid
 from app.adapters.base import ChatResult, ModelAdapter
 from app.models.request import ChatRequest, Message
 from app.services.metrics import MetricsCollector, RequestMetric
+from app.utils.context import get_request_id
 
 
 def _messages_to_dict(messages: list[Message]) -> list[dict]:
@@ -49,9 +50,11 @@ async def dispatch_non_stream(
             api_key_id=api_key_id,
         ))
         return result
-    except Exception:
+    except Exception as e:
         lb.report_error(model_name)
         lb.release(model_name)
+        if req_id := get_request_id():
+            e.args = (f"[req:{req_id}] {e}",) + e.args[1:]
         raise
 
 
@@ -104,7 +107,9 @@ async def dispatch_stream(
     except asyncio.CancelledError:
         lb.release(model_name)
         raise
-    except Exception:
+    except Exception as e:
         lb.report_error(model_name)
         lb.release(model_name)
+        if req_id := get_request_id():
+            e.args = (f"[req:{req_id}] {e}",) + e.args[1:]
         raise

@@ -1,10 +1,16 @@
+import asyncio
 import time
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from app.config import get_models_config
 from app.db.sqlite import get_db, init_db
+
+_RING_BUFFER_SIZE = 10_000
+_BATCH_SIZE = 100
+_FLUSH_INTERVAL = 5.0
+
 
 @dataclass
 class RequestMetric:
@@ -24,12 +30,38 @@ class RequestMetric:
 
 class MetricsCollector:
     def __init__(self):
-        self._metrics: list[RequestMetric] = []
+        # Ring buffer: only the most recent N metrics are kept in memory
+        self._metrics: deque[RequestMetric] = deque(maxlen=_RING_BUFFER_SIZE)
+        self._pending: list[RequestMetric] = []
         self._user_usage: dict[str, dict] = defaultdict(lambda: {
             "total_tokens": 0,
             "total_requests": 0,
             "total_cost_estimate": 0.0,
         })
+        self._flush_task: asyncio.Task | None = None
+
+    def start_flush_loop(self):
+        if self._flush_task is None or self._flush_task.done():
+            self._flush_task = asyncio.create_task(self._flush_loop())
+
+    async def stop_flush_loop(self):
+        if self._flush_task and not self._flush_task.done():
+            self._flush_task.cancel()
+            try:
+                await self._flush_task
+            except asyncio.CancelledError:
+                pass
+
+    async def _flush_loop(self):
+        while True:
+            try:
+                await asyncio.sleep(_FLUSH_INTERVAL)
+                await self._flush()
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                # Log and continue; we don't want the background task to die
+                pass
 
     async def record(self, metric: RequestMetric):
         metric.cost_estimate = calculate_cost(
@@ -42,7 +74,24 @@ class MetricsCollector:
         usage["total_tokens"] += metric.total_tokens
         usage["total_requests"] += 1
         usage["total_cost_estimate"] += metric.cost_estimate
-        await persist_usage(metric)
+        self._pending.append(metric)
+        if len(self._pending) >= _BATCH_SIZE:
+            await self._flush()
+
+    async def force_flush(self):
+        await self.stop_flush_loop()
+        await self._flush()
+
+    async def _flush(self):
+        if not self._pending:
+            return
+        batch = self._pending[:]
+        self._pending = []
+        try:
+            await persist_usage_batch(batch)
+        except Exception:
+            # On failure, put them back and retry next time
+            self._pending = batch + self._pending
 
     def get_user_usage(self, user_id: str) -> dict:
         return self._user_usage.get(user_id, {})
@@ -67,10 +116,12 @@ def calculate_cost(model_name: str, prompt_tokens: int, completion_tokens: int) 
     return (prompt_tokens / 1000 * input_price) + (completion_tokens / 1000 * output_price)
 
 
-async def persist_usage(metric: RequestMetric) -> None:
+async def persist_usage_batch(metrics: list[RequestMetric]) -> None:
+    if not metrics:
+        return
     await init_db()
     async with get_db() as db:
-        await db.execute(
+        await db.executemany(
             """
             INSERT INTO usage_logs (
                 api_key_id, user_id, model_name, tier, prompt_tokens,
@@ -78,18 +129,21 @@ async def persist_usage(metric: RequestMetric) -> None:
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (
-                metric.api_key_id,
-                metric.user_id,
-                metric.model_name,
-                metric.tier,
-                metric.prompt_tokens,
-                metric.completion_tokens,
-                metric.total_tokens,
-                metric.latency_ms,
-                metric.route_path,
-                metric.cost_estimate,
-            ),
+            [
+                (
+                    m.api_key_id,
+                    m.user_id,
+                    m.model_name,
+                    m.tier,
+                    m.prompt_tokens,
+                    m.completion_tokens,
+                    m.total_tokens,
+                    m.latency_ms,
+                    m.route_path,
+                    m.cost_estimate,
+                )
+                for m in metrics
+            ],
         )
         await db.commit()
 

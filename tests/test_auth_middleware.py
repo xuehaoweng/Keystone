@@ -66,12 +66,13 @@ def test_verify_jwt_invalid(monkeypatch):
 def test_verify_api_key_not_found(monkeypatch):
     import os
     import tempfile
-    from app.db.sqlite import init_db, set_db_path
+    from app.db.sqlite import close_db, init_db, set_db_path
     fd, path = tempfile.mkstemp()
     os.close(fd)
     monkeypatch.setenv("SQLITE_DB_PATH", path)
-    set_db_path(path)
     import asyncio
+    asyncio.run(close_db())
+    set_db_path(path)
     asyncio.run(init_db())
     result = asyncio.run(verify_api_key("nonexistent_hash"))
     assert result is None
@@ -81,11 +82,12 @@ def test_verify_api_key_not_found(monkeypatch):
 @pytest.mark.asyncio
 async def test_create_api_key(monkeypatch):
     monkeypatch.setenv("SQLITE_DB_PATH", ":memory:")
-    from app.db.sqlite import init_db, set_db_path
+    from app.db.sqlite import close_db, init_db, set_db_path
     import os
     import tempfile
     fd, path = tempfile.mkstemp()
     os.close(fd)
+    await close_db()
     set_db_path(path)
     await init_db()
     result = await create_api_key(name="test-key", user_id="user-1")
@@ -103,12 +105,13 @@ def test_api_key_encryption_roundtrip(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_create_api_key_with_allowed_tiers(monkeypatch):
-    from app.db.sqlite import get_db, init_db, set_db_path
+    from app.db.sqlite import close_db, get_db, init_db, set_db_path
     import tempfile
     import os
 
     fd, path = tempfile.mkstemp()
     os.close(fd)
+    await close_db()
     set_db_path(path)
     await init_db()
 

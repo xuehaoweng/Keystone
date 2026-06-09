@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.adapters.base import ChatResult
-from app.db.sqlite import get_db, init_db, set_db_path
+from app.db.sqlite import close_db, get_db, init_db, set_db_path
 from app.main import app
 from app.services.load_balancer import LoadBalancer, ModelInstance
 
@@ -22,9 +22,11 @@ def _auth_side_effect(request):
 
 @pytest.fixture(autouse=True)
 def isolated_sqlite(tmp_path):
+    asyncio.run(close_db())
     set_db_path(str(tmp_path / "governance.db"))
     asyncio.run(init_db())
     yield
+    asyncio.run(close_db())
     set_db_path("gateway.db")
 
 
