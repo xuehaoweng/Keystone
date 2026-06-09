@@ -468,7 +468,7 @@ export function App() {
           <div className="quick-links">
             <a href="/docs"><BookOpen size={14} /> 接口文档</a>
             <a href="/api/config"><Braces size={14} /> 配置接口</a>
-            <a href="https://github.com/"><Github size={14} /> GitHub</a>
+            <a href="https://github.com/xuehaoweng/Keystone"><Github size={14} /> GitHub</a>
           </div>
         </section>
       </div>
@@ -484,7 +484,7 @@ export function App() {
           <p>统一入口、模型治理、成本观测、路由解释和调用验证。</p>
           <div className="quick-links">
             <a href="/docs"><BookOpen size={14} /> 接口文档</a>
-            <a href="https://github.com/"><Github size={14} /> GitHub</a>
+            <a href="https://github.com/xuehaoweng/Keystone"><Github size={14} /> GitHub</a>
             <a href="/api/config"><Braces size={14} /> 配置接口</a>
           </div>
         </div>

@@ -11,7 +11,9 @@ from fastapi.staticfiles import StaticFiles
 load_dotenv()
 
 from app.api.admin import router as admin_router  # noqa: E402
+from app.api.anthropic_compatible import router as anthropic_router  # noqa: E402
 from app.api.auth import router as auth_router  # noqa: E402
+from app.api.openai_compatible import router as openai_router  # noqa: E402
 from app.api.runs import router as runs_router  # noqa: E402
 from app.db.redis import get_redis  # noqa: E402
 from app.db.redis import close_redis  # noqa: E402
@@ -40,6 +42,8 @@ async def request_id_middleware(request: Request, call_next):
 app.include_router(runs_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(openai_router)
+app.include_router(anthropic_router)
 
 _web_dir = Path(__file__).parent / "web"
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
